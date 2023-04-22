@@ -1,9 +1,28 @@
 const User = require("../models/User");
+const Joi = require("joi");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+const userSchema = Joi.object({
+  name: Joi.string().required(),
+  email: Joi.string().email().required(),
+  password: Joi.string()
+    .pattern(/^((?=\S*?[A-Z])(?=\S*?[a-z])(?=\S*?[0-9]).{6,})\S$/)
+    .required()
+    .messages({
+      "string.pattern.base":
+        "Password must be at least 6 characters long and contain at least one lowercase letter, one uppercase letter, one digit",
+      "any.required": "Password is required",
+    }),
+});
+
 const registerUser = async (req, res) => {
   try {
+    const { error } = userSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+    }
+
     const existingUser = await User.findOne({ email: req.body.email });
     if (existingUser) {
       return res.status(400).send({ message: "Email already taken" });
